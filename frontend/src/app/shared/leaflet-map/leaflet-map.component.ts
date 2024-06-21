@@ -1,7 +1,8 @@
 import { FeatureCollection } from 'geojson';
 import { MapAction } from 'src/app/core/state/map.state';
 import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { circle, Control, Icon, icon, latLng, Layer, Map, marker, Marker, polygon, Rectangle, tileLayer } from 'leaflet';
+import { circle, Control, Icon, icon, latLng, Layer, Map, marker, Marker, polygon, Rectangle, tileLayer, LayerGroup, FeatureGroup, TileLayer, LatLngBounds } from 'leaflet';
+import { ColorbarData } from 'src/app/core/api/models/colorbar-data';
 import '@geoman-io/leaflet-geoman-free';
 // import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css';
 import { MapService } from 'src/app/core/services/map.service';
@@ -11,6 +12,7 @@ import { MapPlotState } from 'src/app/core/state/map-plot.state';
 import { MapPlot } from 'src/app/core/models/map-plot';
 import { map, tap } from 'rxjs/operators';
 import { MapPlotsService } from 'src/app/core/services/map-plots.service';
+import { prefix } from '@fortawesome/free-solid-svg-icons';
 
 const iconRetinaUrl = 'assets/marker-icon-2x.png';
 const iconUrl = 'assets/marker-icon.png';
@@ -31,44 +33,29 @@ Marker.prototype.options.icon = iconDefault;
   selector: 'app-leaflet-map',
   templateUrl: './leaflet-map.component.html',
   styleUrls: ['./leaflet-map.component.scss'],
-  // changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LeafletMapComponent implements OnInit {
 
+  map: Map;
+  layer: FeatureGroup | TileLayer
 
   options = {
-    layers: [
-      tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        minZoom: 1,
-        maxZoom: 20,
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      }),
-    ],
-    zoom: 8,
-    center: latLng(50.82, 4.35),
+    zoom: 4.5,
+    center: latLng(49.3, 9.23),
+    attributionControl: false // Disable the default attribution control
   };
 
-  // plotLayers: Observable<Layer[]>
   @Select(MapPlotState.mapPlots) mapPlots$: Observable<MapPlot[]>;
   @Select(MapPlotState.activePlot) activePlot$: Observable<MapPlot>;
 
-  // legend = new Control({ position: 'bottomright' });
   layersControl = {
     baseLayers: {
-      'Open Street Map': tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '...' }),
-      'ESRI Satellite Imagery': tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, attribution: '...' })
+      'Open Street Map': tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, noWrap: true, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }),
+      'ESRI Topographic Map': tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, noWrap: true, attribution: 'Esri, USGS | FOEN / Swiss Parks Network, swisstopo, Esri, TomTom, Garmin, FAO, NOAA, USGS | Esri, HERE, Garmin, FAO, NOAA, USGS' }),
+      'ESRI Satellite Map': tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, noWrap: true, attribution: 'Esri, USGS | Esri, TomTom, Garmin, FAO, NOAA, USGS | Earthstar Geographics' })
     },
     overlays: {}
   }
-
-  // layers$: Observable<Layer[]>;
-
-  // layers$: Observable<Layer[]> = of([
-  //   circle([ 46.95, 4 ], { radius: 5000 }),
-  //   polygon([[ 46.8, 4 ], [ 46.92, 5 ], [ 46.87, 4 ]]),
-  //   marker([ 46.879966, 4 ])
-  // ]);
 
   constructor(
     public mapService: MapService,
@@ -77,10 +64,49 @@ export class LeafletMapComponent implements OnInit {
   ) {
   }
 
-  ngOnInit(): void { }
+  ngOnInit(): void {
+    this.mapPlots$.subscribe(mapPlots => {
+      this.updateOverlays(mapPlots);
+    });
+  }
+
+  updateOverlays(mapPlots: MapPlot[]) {
+    const overlayLayers: { [key: string]: Layer } = {};
+    mapPlots.forEach(mapPlot => {
+      if (mapPlot.type == 'flexpart' && mapPlot.geojson) {
+        this.layer = this.mapPlotsService.flexpartPlotToLayer(mapPlot.geojson as FeatureCollection);
+        this.mapPlotsService.setColors(this.layer as LayerGroup, mapPlot.metadata as ColorbarData);
+      } else if (mapPlot.type == 'flexpart') {
+        this.layer = this.mapPlotsService.addTiff(mapPlot.data) as unknown as TileLayer;
+      } else if (mapPlot.type == 'atp45') {
+        let featureGroup = this.mapPlotsService.atp45PlotToLayer(mapPlot.geojson as FeatureCollection);
+        featureGroup.eachLayer((layers: any) => {
+          layers.eachLayer((layer: any) => {
+            layer.bindPopup(layer.feature.properties.type);
+          });
+        });
+        this.layer = featureGroup;
+      }
+      overlayLayers[mapPlot.name] = this.layer;
+    });
+    this.layersControl.overlays = overlayLayers;
+
+  }
 
   onMapReady(map: Map) {
     this.mapService.leafletMap = map;
+    this.map = map
+    this.layersControl.baseLayers['Open Street Map'].addTo(map);
+    new Control.Attribution({
+      prefix: false, // Remove the default 'Leaflet' prefix
+    }).addTo(this.map);
+    new Control.Scale({
+      metric: true,
+      imperial: false,
+      maxWidth: 100,
+      position: 'bottomleft'
+    }).addTo(this.map);
+
     map.pm.addControls({
       position: 'topleft',
       drawCircle: false,
@@ -136,10 +162,39 @@ export class LeafletMapComponent implements OnInit {
             this.store.dispatch(new MapAction.ChangeMarker(this.mapService.markerToPoint(e.layer as Marker)));
           })
         }
-
-
       }
     })
+
+    // Listen to when user selects another layer, to remove the default layer attribution that otherwise stays for other layers
+    map.on('baselayerchange', (e) => {
+      const layersControl: { [key: string]: TileLayer } = this.layersControl.baseLayers;
+      const baseLayerName = Object.keys(layersControl)[0];
+      if (baseLayerName && layersControl[baseLayerName]) { // have to check if they exist otherwise Typescript isn't sure the variables exist in the following conditions and returns an error
+        const baseLayerAttribution = layersControl[baseLayerName].options.attribution;
+        if (e.name !== baseLayerName, baseLayerAttribution) { // when on the default layer, and changing to another one
+          const attributionControl = this.map.attributionControl;
+          attributionControl.removeAttribution(baseLayerAttribution); // remove the attribution from the default layer
+        }
+      }
+    })
+
+    this.mapPlots$.subscribe(mapPlots => {
+      this.updateOverlays(mapPlots);
+    });
+
+    // Simulate a click event on the default layer control button such that OpenStreetMap in the Layers icon appears as clicked by default
+    setTimeout(() => {
+      const layersControlContainer = document.querySelector('.leaflet-control-layers');
+      if (layersControlContainer) {
+        const defaultLayerInput = layersControlContainer.querySelectorAll('input[type="radio"]')[0] as HTMLInputElement;
+        if (defaultLayerInput) {
+          defaultLayerInput.checked = true;
+          defaultLayerInput.dispatchEvent(new Event('change'));
+        }
+      }
+    }, 0);
+
+
   }
 
 }
