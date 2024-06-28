@@ -23,7 +23,7 @@ The application needs to retrieve weather forecasts from ECMWF. That means you'l
 ```
 
 ### Install Julia
-Due to an issue with Flexpart.jl (see [this](https://github.com/PaulPerezRMA/Flexpart.jl/issues/9)), the application will only work with Julia v1.7. To easily install Julia v1.7, you can use [Juliaup](https://github.com/JuliaLang/juliaup):
+Due to an issue with Flexpart.jl (see [this](https://github.com/tcarion/Flexpart.jl/issues/9)), the application will only work with Julia v1.7. To easily install Julia v1.7, you can use [Juliaup](https://github.com/JuliaLang/juliaup):
 
 ```bash
 curl -fsSL https://install.julialang.org | sh
