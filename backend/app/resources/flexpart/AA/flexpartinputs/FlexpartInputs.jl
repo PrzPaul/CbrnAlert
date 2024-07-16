@@ -99,6 +99,20 @@ function add(fepath::String)
     newentry |> save!
 end
 
+function add_existing(fepath::String)
+    fedir = FlexExtractDir(fepath)
+    name = basename(fedir.path)
+    fcontrol = FeControl(fedir)
+    newentry = FlexpartInput(
+        uuid=name,
+        name=name,
+        path=relpath(fedir.path),
+        control=JSON3.write(fcontrol.dict),
+        status=STATUS_FINISHED
+    )
+    newentry |> save!
+end
+
 isfinished(entry) = entry.status == STATUS_FINISHED
 
 function change_status!(input::FlexpartInput, value::String)
