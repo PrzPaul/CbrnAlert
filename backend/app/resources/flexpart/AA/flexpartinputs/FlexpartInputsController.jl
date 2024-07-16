@@ -10,6 +10,7 @@ using Flexpart
 using FlexExtract
 
 using CbrnAlertApp: STATUS_ONGOING, STATUS_ERRORED, STATUS_FINISHED
+using CbrnAlertApp: EXTRACTED_WEATHER_DATA_DIR
 using CbrnAlertApp: _area, round_area
 
 using CbrnAlertApp.Users
@@ -53,7 +54,6 @@ function data_retrieval()
   fcontrol[:GRID] = gridres
   fcontrol[:REQUEST] = 0
   fcontrol[:ACCTYPE] = "FC"
-#   fcontrol[:CLASS] = "FOO"
   set_area!(fcontrol, area)
   set_steps!(fcontrol, start_date, end_date, time_step)
 
@@ -111,6 +111,7 @@ function _find_control_path(fedirpath)::FlexExtractDir
   i = findfirst(x -> occursin("CONTROL", x), fefiles)
   FlexExtractDir(fedirpath, fefiles[1])
 end
+
 function _clarify_control(fcontrol)
   startday = Dates.DateTime(fcontrol[:START_DATE], "yyyymmdd")
   times = Base.parse.(Int, split(fcontrol[:TIME], " "))
@@ -138,10 +139,18 @@ function _clarify_control(fcontrol)
 end
 
 function get_inputs()
-  fpinputs = user_related(FlexpartInput)
-  filter!(FlexpartInputs.isfinished, fpinputs)
-  response = Dict.(fpinputs)
-  return response |> json
+    FlexpartInputs.delete_non_existing!()
+    fpinputs = user_related(FlexpartInput)
+    filter!(FlexpartInputs.isfinished, fpinputs)
+    fpinputs_names = [(Dict(elem)[:name]) for elem in all(FlexpartInput)]
+    if sort(readdir(EXTRACTED_WEATHER_DATA_DIR)) != sort(fpinputs_names)
+        for new_fedir in setdiff(readdir(EXTRACTED_WEATHER_DATA_DIR), fpinputs_names)
+            FlexpartInputs.add_existing(joinpath(EXTRACTED_WEATHER_DATA_DIR, new_fedir))
+        end
+    end
+    fpinputs = user_related(FlexpartInput)
+    response = Dict.(fpinputs)
+    return response |> json
 end
 
 function delete_input()
