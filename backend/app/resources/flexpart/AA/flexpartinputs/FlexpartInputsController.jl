@@ -142,10 +142,11 @@ function get_inputs()
     FlexpartInputs.delete_non_existing!()
     fpinputs = user_related(FlexpartInput)
     filter!(FlexpartInputs.isfinished, fpinputs)
-    fpinputs_names = [(Dict(elem)[:name]) for elem in all(FlexpartInput)]
+    fpinputs_names = [input.name for input in fpinputs]
     if sort(readdir(EXTRACTED_WEATHER_DATA_DIR)) != sort(fpinputs_names)
         for new_fedir in setdiff(readdir(EXTRACTED_WEATHER_DATA_DIR), fpinputs_names)
-            FlexpartInputs.add_existing(joinpath(EXTRACTED_WEATHER_DATA_DIR, new_fedir))
+            newinput = FlexpartInputs.add_existing(joinpath(EXTRACTED_WEATHER_DATA_DIR, new_fedir))
+            FlexpartInputs.assign_to_user!(current_user(), newinput)
         end
     end
     fpinputs = user_related(FlexpartInput)
