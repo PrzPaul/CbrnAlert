@@ -86,6 +86,21 @@ function create()
     newentry |> save!
 end
 
+function add_existing(fppath::String)
+    fpsim = FlexpartSim(abspath(joinpath(fppath, "pathnames")))
+    name = basename(fppath)
+    fpoptions = FlexpartOption(fpsim)
+    Flexpart.remove_unused_species!(fpoptions)
+    newentry = FlexpartRun(
+        uuid=name,
+        name=name,
+        path=relpath(fppath),
+        options=JSON3.write(fpoptions.options),
+        status=STATUS_FINISHED
+    )
+    newentry |> save!
+end
+
 isfinished(entry) = entry.status == STATUS_FINISHED
 iserrored(entry) = entry.status == STATUS_ERRORED
 
