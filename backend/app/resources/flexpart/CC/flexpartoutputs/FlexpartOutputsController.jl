@@ -29,6 +29,7 @@ function _output_by_uuid(output_id)
 end
 
 function get_outputs()
+    FlexpartOutputs.delete_non_existing!()
     run_id = Genie.Router.params(:runId)
     outputs = related(FlexpartRuns._get_run(run_id), FlexpartOutput)
     Dict.(outputs) |> json
