@@ -9,8 +9,11 @@ using SearchLight.Relationships
 
 using Flexpart
 using Dates
+using NCDatasets
+
 
 using CbrnAlertApp: STATUS_CREATED, STATUS_FINISHED, STATUS_ONGOING, STATUS_ERRORED
+using CbrnAlertApp: FLEXPART_RUNS_DIR
 using CbrnAlertApp: _area
 
 using CbrnAlertApp.Users
@@ -21,9 +24,6 @@ using CbrnAlertApp.FlexpartOutputs
 
 using CbrnAlertApp: API
 
-# const API = CbrnAlertApp.API
-
-# const FLEXPART_RUN_FAILED = Genie.Router.error(500, "Flexpart run failed", "application/json", error_info="Flexpart run failed")
 
 struct FlexpartRunException{T} <: Exception
   error::API.OpenAPI.APIModel
@@ -171,6 +171,9 @@ function run(fpsim::FlexpartSim, fprun::FlexpartRun)
   end
 
   if _iscompleted(fpsim)
+    output_dir = joinpath(fprun.path, "output")
+    nc_file = joinpath(output_dir, filter(x -> endswith(x, ".nc"), readdir(output_dir))[1])
+    add_total_depo(nc_file)
     FlexpartRuns.change_status!(fprun.name, STATUS_FINISHED)
   else
     @info "Flexpart run with name $(fprun.name) has failed"
@@ -197,11 +200,36 @@ function run(fpsim::FlexpartSim, fprun::FlexpartRun)
   return fprun
 end
 
+function add_total_depo(fp_output)
+    ds = Dataset(fp_output, "a")
+    if haskey(ds,"WD_spec001") && haskey(ds, "DD_spec001")  && !haskey(ds,"TD_spec001")
+        wet_depo = ds["WD_spec001"]
+        dry_depo = ds["DD_spec001"]
+        total_depo = wet_depo[:] + dry_depo[:]
+        defVar(ds, "TD_spec001", total_depo, dimnames(wet_depo), attrib=["units" => wet_depo.attrib["units"]])
+    else
+        nothing
+    end
+    close(ds)
+end
+
 function get_runs()
-  fpruns = user_related(FlexpartRun)
-  # filter!(FlexpartRuns.isfinished, fpruns)
-  filter!(x -> x.status == STATUS_FINISHED, fpruns)
-  API.FlexpartRun.(fpruns) |> json
+    FlexpartRuns.delete_non_existing!()
+    fpruns = user_related(FlexpartRun)
+    filter!(FlexpartRuns.isfinished, fpruns)
+    fpruns_names = [run.name for run in fpruns]
+    if sort(readdir(FLEXPART_RUNS_DIR)) != sort(fpruns_names)
+        for new_fpdir in setdiff(readdir(FLEXPART_RUNS_DIR), fpruns_names)
+            newrun = FlexpartRuns.add_existing(joinpath(FLEXPART_RUNS_DIR, new_fpdir))
+            output_dir = joinpath(FLEXPART_RUNS_DIR, new_fpdir, "output")
+            nc_file = joinpath(output_dir, filter(x -> endswith(x, ".nc"), readdir(output_dir))[1])
+            add_total_depo(nc_file)
+            FlexpartRuns.assign_to_user!(current_user(), newrun)
+            FlexpartOutputs.add!(newrun)
+        end
+    end
+    fpruns = user_related(FlexpartRun)
+    API.FlexpartRun.(fpruns) |> json
 end
 
 function get_run()
