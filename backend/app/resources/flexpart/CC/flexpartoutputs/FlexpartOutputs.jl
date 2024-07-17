@@ -21,13 +21,13 @@ export FlexpartOutput
 
 @kwdef mutable struct FlexpartOutput <: AbstractModel
     id::DbId = DbId()
-	uuid::String = "" # id as uuid4
-	name::String = "" # user-friendly name
-	path::String = "" # path to the file
-	date_created::DateTime = Dates.now()
-	filetype::String = "" # type of the output file (ncf, binary)
-	isnested::Bool = false # if output is nested
-	metadata::String = "" # metadata in JSON format
+    uuid::String = "" # id as uuid4
+    name::String = "" # user-friendly name
+    path::String = "" # path to the file
+    date_created::DateTime = Dates.now()
+    filetype::String = "" # type of the output file (ncf, binary)
+    isnested::Bool = false # if output is nested
+    metadata::String = "" # metadata in JSON format
 end
 
 Validation.validator(::Type{FlexpartOutput}) = ModelValidator([
