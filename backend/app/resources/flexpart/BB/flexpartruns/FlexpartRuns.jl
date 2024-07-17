@@ -102,6 +102,7 @@ function add_existing(fppath::String)
 end
 
 isfinished(entry) = entry.status == STATUS_FINISHED
+isongoing(entry) = entry.status == STATUS_ONGOING
 iserrored(entry) = entry.status == STATUS_ERRORED
 
 function change_status!(name::String, value::String)
