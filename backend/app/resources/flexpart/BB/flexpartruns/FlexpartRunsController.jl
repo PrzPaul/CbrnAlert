@@ -218,7 +218,9 @@ function get_runs()
     fpruns = user_related(FlexpartRun)
     filter!(FlexpartRuns.isfinished, fpruns)
     fpruns_names = [run.name for run in fpruns]
-    if sort(readdir(FLEXPART_RUNS_DIR)) != sort(fpruns_names)
+    if !isempty(filter(FlexpartRuns.isongoing, user_related(FlexpartRun)))   # allows user to plot on app, while Flexpart is running a simulation
+        nothing
+    else sort(readdir(FLEXPART_RUNS_DIR)) != sort(fpruns_names)
         for new_fpdir in setdiff(readdir(FLEXPART_RUNS_DIR), fpruns_names)
             newrun = FlexpartRuns.add_existing(joinpath(FLEXPART_RUNS_DIR, new_fpdir))
             output_dir = joinpath(FLEXPART_RUNS_DIR, new_fpdir, "output")
@@ -227,8 +229,8 @@ function get_runs()
             FlexpartRuns.assign_to_user!(current_user(), newrun)
             FlexpartOutputs.add!(newrun)
         end
+        fpruns = user_related(FlexpartRun)
     end
-    fpruns = user_related(FlexpartRun)
     API.FlexpartRun.(fpruns) |> json
 end
 
