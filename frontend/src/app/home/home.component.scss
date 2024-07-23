@@ -39,6 +39,7 @@
 .sidenav-container {
   /* When the sidenav is not fixed, stretch the sidenav container to fill the available space. This
          causes `<mat-sidenav-content>` to act as our scrolling element for desktop layouts. */
+  height: calc(100% - var(--toolbarHeight));
   flex: 1;
 
   .sidenav-content {
