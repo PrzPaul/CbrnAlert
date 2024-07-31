@@ -15,14 +15,16 @@
 }
 /* You can add global styles to this file, and also import other style files */
 :root {
-  --sidebarMinWidth: 14rem;
+  --sidebarMinWidth: 13vw;
   --sidebarBackground: rgb(78, 115, 223);
   --sideColor: aliceblue;
   --smallWidth: 320px;
   --widthForDisplayChange: 780px;
   --widthForSidebarChange: 1024px;
   --formFontSize: 12px;
-  --toolbarHeight: 44px;
+  --toolbarHeight: 6vh;
+  --leaflet-box-size: 3vh;
+  --layers-font-size: calc(0.5 * var(--leaflet-box-size));
 }
 
 @mixin flexDir($dir) {
@@ -88,10 +90,10 @@ body {
 .right-side-container {
     position: fixed;
     top: var(--toolbarHeight);
-    right: 0;
+    right: calc(4 * var(--toolbarHeight));
     // width: 120px;
-    background-color: var(--sidebarBackground);
-    color: white;
+    background-color: white;
+    color: rgb(113, 184, 255);
     // max-width: 365px;
     z-index: 100000;
 }
@@ -131,9 +133,64 @@ form {
     box-shadow: 0 0 15px rgba(0,0,0,0.2);
     border-radius: 5px;
 }
+
 .leaflet-info {
     margin: 0 0 5px;
     color: #777;
+}
+
+.leaflet-tile-container .leaflet-tile {
+    box-shadow: 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+// Scaling of top-left control buttons with screen res
+.leaflet-touch .leaflet-bar a {
+    width: var(--leaflet-box-size);
+    height: var(--leaflet-box-size);
+    line-height: var(--leaflet-box-size);
+    padding: calc(0.15 * var(--leaflet-box-size));
+}
+.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out {
+    font-size: calc(0.7 * var(--leaflet-box-size));
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+// Scaling of control layers button with screen res
+.leaflet-touch .leaflet-control-layers-toggle {
+    width: calc(0.75 * var(--toolbarHeight));
+    height: calc(0.75 * var(--toolbarHeight));
+}
+.leaflet-control-layers-toggle {
+    background-size: calc(0.47 * var(--toolbarHeight));
+}
+.leaflet-retina .leaflet-control-layers-toggle {
+    background-size: calc(0.47 * var(--toolbarHeight));
+}
+.leaflet-control-layers label {
+    font-size: var(--layers-font-size);
+}
+.leaflet-control-layers-expanded {
+    padding: calc(0.2 * var(--leaflet-box-size));
+    padding-right: calc(0.3 * var(--leaflet-box-size));
+}
+.leaflet-control-layers-list input[type="radio"] {
+    width: calc(0.7 * var(--layers-font-size));
+    height: calc(0.7 * var(--layers-font-size));
+}
+
+// Scaling of scale bar with screen res (see leaflet-map.component.ts for dynamic updating of scale maxWidth)
+.leaflet-control-scale-line {
+    height: calc(0.6 * var(--leaflet-box-size));
+    font-size: calc(0.8 * var(--layers-font-size));
+    border-width: calc(0.2 * var(--layers-font-size));
+    line-height: 1;
+}
+
+// Scaling of layer attribution with screen res
+.leaflet-control-attribution {
+    font-size: calc(0.8 * var(--layers-font-size));
 }
 
 .legend {
@@ -172,13 +229,4 @@ form {
 
 .legend-ticklabel:nth-of-type(2) {
     transform: translateY(11px)
-}
-
-.map-plot-list {
-    mat-list-item {
-        height: 36px;
-    }
-//     .mat-expansion-panel-body {
-//         padding: 10px;
-//     }
 }
