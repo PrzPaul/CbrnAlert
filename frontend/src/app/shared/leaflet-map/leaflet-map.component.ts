@@ -1,7 +1,7 @@
 import { FeatureCollection } from 'geojson';
 import { MapAction } from 'src/app/core/state/map.state';
 import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { circle, Control, Icon, icon, latLng, Layer, Map, marker, Marker, polygon, Rectangle, tileLayer, LayerGroup, FeatureGroup, TileLayer, LatLngBounds } from 'leaflet';
+import { circle, Control, Icon, icon, latLng, latLngBounds, Layer, Map, marker, Marker, polygon, Rectangle, tileLayer, LayerGroup, FeatureGroup, TileLayer, LatLngBounds, control } from 'leaflet';
 import { ColorbarData } from 'src/app/core/api/models/colorbar-data';
 import '@geoman-io/leaflet-geoman-free';
 // import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css';
@@ -37,12 +37,11 @@ Marker.prototype.options.icon = iconDefault;
 export class LeafletMapComponent implements OnInit {
 
   map: Map;
-  layer: FeatureGroup | TileLayer
+  layer: FeatureGroup | TileLayer;
+  scalebar: Control.Scale | undefined;
 
   options = {
-    zoom: 4.5,
-    center: latLng(49.3, 9.23),
-    attributionControl: false // Disable the default attribution control
+    attributionControl: false, // Disable the default attribution control
   };
 
   @Select(MapPlotState.mapPlots) mapPlots$: Observable<MapPlot[]>;
@@ -50,9 +49,9 @@ export class LeafletMapComponent implements OnInit {
 
   layersControl = {
     baseLayers: {
-      'Open Street Map': tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, noWrap: true, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }),
-      'ESRI Topographic Map': tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, noWrap: true, attribution: 'Esri, USGS | FOEN / Swiss Parks Network, swisstopo, Esri, TomTom, Garmin, FAO, NOAA, USGS | Esri, HERE, Garmin, FAO, NOAA, USGS' }),
-      'ESRI Satellite Map': tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, noWrap: true, attribution: 'Esri, USGS | Esri, TomTom, Garmin, FAO, NOAA, USGS | Earthstar Geographics' })
+      'Open Street Map': tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, detectRetina: true, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }),
+      'ESRI Topographic Map': tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, detectRetina: true, attribution: 'Esri, USGS | FOEN / Swiss Parks Network, swisstopo, Esri, TomTom, Garmin, FAO, NOAA, USGS | Esri, HERE, Garmin, FAO, NOAA, USGS' }),
+      'ESRI Satellite Map': tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, detectRetina: true, attribution: 'Esri, USGS | Esri, TomTom, Garmin, FAO, NOAA, USGS | Earthstar Geographics' })
     },
     overlays: {}
   }
@@ -95,17 +94,22 @@ export class LeafletMapComponent implements OnInit {
 
   onMapReady(map: Map) {
     this.mapService.leafletMap = map;
-    this.map = map
+    this.map = map;
+    // Initial map settings at startup
+    map.fitBounds(latLngBounds(latLng(57, -15), latLng(43, 33)));
     this.layersControl.baseLayers['Open Street Map'].addTo(map);
-    new Control.Attribution({
+    control.attribution({
       prefix: false, // Remove the default 'Leaflet' prefix
-    }).addTo(this.map);
-    new Control.Scale({
-      metric: true,
-      imperial: false,
-      maxWidth: 100,
-      position: 'bottomleft'
-    }).addTo(this.map);
+    }).addTo(map);
+    // Inialize scale bar based on screen resolution
+    this.getScalebar();
+    // If screen resolution changes, get new scale bar
+    window.addEventListener('resize', () => {
+      this.getScalebar();
+    });
+    // Setting the zoom options
+    // map.options.zoomDelta = 1;
+    // map.options.zoomSnap = 1;
 
     map.pm.addControls({
       position: 'topleft',
@@ -194,7 +198,29 @@ export class LeafletMapComponent implements OnInit {
       }
     }, 0);
 
-
   }
+
+    // Function to create/update scale bar depending on screen resolution
+    private getScalebar() {
+      // remove existing scale bar if it exists
+      if (this.scalebar) {
+        this.map.removeControl(this.scalebar);
+      }
+
+      // add scale bar with updated maxWidth
+      const maxWidth = this.getScalebarWidth();
+      this.scalebar = new Control.Scale({
+        position: 'bottomleft',
+        maxWidth: maxWidth,
+        metric: true,
+        imperial: false,
+      }).addTo(this.map);
+    }
+
+    // Function to calculate scale bar maxWidth based on viewport width
+    private getScalebarWidth(): number {
+      const vwpixels = window.innerWidth;   // get viewport width in pixels
+      return vwpixels * 0.07;   // return scale bar width equal to 10% of the viewport width
+    }
 
 }
