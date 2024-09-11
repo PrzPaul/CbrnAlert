@@ -136,6 +136,14 @@ function delete_non_existing!()
     end
 end
 
+function delete_errored!()
+    entries = all(FlexpartRun)
+    errored = filter(x -> x.status == STATUS_ERRORED, entries)
+    for entry in errored
+        SearchLight.delete(entry)
+    end
+end
+
 function delete_unfinished!()
     entries = all(FlexpartRun)
     unfinished = filter(x -> x.status !== STATUS_FINISHED, entries)
