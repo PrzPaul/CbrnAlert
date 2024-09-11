@@ -201,37 +201,44 @@ function run(fpsim::FlexpartSim, fprun::FlexpartRun)
 end
 
 function add_total_depo(fp_output)
-    ds = Dataset(fp_output, "a")
-    if haskey(ds,"WD_spec001") && haskey(ds, "DD_spec001")  && !haskey(ds,"TD_spec001")
-        wet_depo = ds["WD_spec001"]
-        dry_depo = ds["DD_spec001"]
-        total_depo = wet_depo[:] + dry_depo[:]
-        defVar(ds, "TD_spec001", total_depo, dimnames(wet_depo), attrib=["units" => wet_depo.attrib["units"]])
-    else
-        nothing
-    end
-    close(ds)
+  ds = Dataset(fp_output, "a")
+  if haskey(ds,"WD_spec001") && haskey(ds, "DD_spec001")  && !haskey(ds,"TD_spec001")
+    wet_depo = ds["WD_spec001"]
+    dry_depo = ds["DD_spec001"]
+    total_depo = wet_depo[:] + dry_depo[:]
+    defVar(ds, "TD_spec001", total_depo, dimnames(wet_depo), attrib=["units" => wet_depo.attrib["units"]])
+  else
+    nothing
+  end
+  close(ds)
 end
 
 function get_runs()
-    FlexpartRuns.delete_non_existing!()
-    fpruns = user_related(FlexpartRun)
-    filter!(FlexpartRuns.isfinished, fpruns)
-    fpruns_names = [run.name for run in fpruns]
-    if !isempty(filter(FlexpartRuns.isongoing, user_related(FlexpartRun)))   # allows user to plot on app, while Flexpart is running a simulation
-        nothing
-    else sort(readdir(FLEXPART_RUNS_DIR)) != sort(fpruns_names)
-        for new_fpdir in setdiff(readdir(FLEXPART_RUNS_DIR), fpruns_names)
-            newrun = FlexpartRuns.add_existing(joinpath(FLEXPART_RUNS_DIR, new_fpdir))
-            output_dir = joinpath(FLEXPART_RUNS_DIR, new_fpdir, "output")
-            nc_file = joinpath(output_dir, filter(x -> endswith(x, ".nc"), readdir(output_dir))[1])
-            add_total_depo(nc_file)
-            FlexpartRuns.assign_to_user!(current_user(), newrun)
-            FlexpartOutputs.add!(newrun)
-        end
-        fpruns = user_related(FlexpartRun)
+  FlexpartRuns.delete_non_existing!()
+  FlexpartRuns.delete_errored!()
+  fpruns = user_related(FlexpartRun)
+  filter!(FlexpartRuns.isfinished, fpruns)
+  fpruns_names = [run.name for run in fpruns]
+  valid_runs = []
+  for run in readdir(FLEXPART_RUNS_DIR)
+    if !isempty(filter(x -> endswith(x, ".nc"), readdir(joinpath(FLEXPART_RUNS_DIR, run, "output"))))
+      push!(valid_runs, run)
     end
-    API.FlexpartRun.(fpruns) |> json
+  end
+  if !isempty(filter(FlexpartRuns.isongoing, user_related(FlexpartRun)))   # allows user to plot on app, while Flexpart is running a simulation
+    nothing
+  else sort(valid_runs) != sort(fpruns_names)
+    for new_fpdir in setdiff(valid_runs, fpruns_names)
+      newrun = FlexpartRuns.add_existing(joinpath(FLEXPART_RUNS_DIR, new_fpdir))
+      output_dir = joinpath(FLEXPART_RUNS_DIR, new_fpdir, "output")
+      nc_file = joinpath(output_dir, filter(x -> endswith(x, ".nc"), readdir(output_dir))[1])
+      add_total_depo(nc_file)
+      FlexpartRuns.assign_to_user!(current_user(), newrun)
+      FlexpartOutputs.add!(newrun)
+    end
+    fpruns = user_related(FlexpartRun)
+  end
+  API.FlexpartRun.(fpruns) |> json
 end
 
 function get_run()
