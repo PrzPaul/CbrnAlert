@@ -4,7 +4,6 @@ import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { circle, Control, Icon, icon, latLng, latLngBounds, Layer, Map, marker, Marker, polygon, Rectangle, tileLayer, LayerGroup, FeatureGroup, TileLayer, LatLngBounds, control } from 'leaflet';
 import { ColorbarData } from 'src/app/core/api/models/colorbar-data';
 import '@geoman-io/leaflet-geoman-free';
-// import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css';
 import { MapService } from 'src/app/core/services/map.service';
 import { Select, Store } from '@ngxs/store';
 import { Observable, of } from 'rxjs';
@@ -108,8 +107,9 @@ export class LeafletMapComponent implements OnInit {
       this.getScalebar();
     });
     // Setting the zoom options
-    // map.options.zoomDelta = 1;
-    // map.options.zoomSnap = 1;
+    map.options.zoomDelta = 1;
+    map.options.zoomSnap = 1;
+    map.options.wheelPxPerZoomLevel	= 0.1 * window.innerWidth;
 
     map.pm.addControls({
       position: 'topleft',
@@ -206,21 +206,14 @@ export class LeafletMapComponent implements OnInit {
       if (this.scalebar) {
         this.map.removeControl(this.scalebar);
       }
-
       // add scale bar with updated maxWidth
-      const maxWidth = this.getScalebarWidth();
+      const maxWidth = 0.07 * window.innerWidth;
       this.scalebar = new Control.Scale({
         position: 'bottomleft',
         maxWidth: maxWidth,
         metric: true,
         imperial: false,
       }).addTo(this.map);
-    }
-
-    // Function to calculate scale bar maxWidth based on viewport width
-    private getScalebarWidth(): number {
-      const vwpixels = window.innerWidth;   // get viewport width in pixels
-      return vwpixels * 0.07;   // return scale bar width equal to 10% of the viewport width
     }
 
 }
