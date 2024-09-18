@@ -1,5 +1,8 @@
 <div class="flex items-center space-x-10">
   <mat-select panelClass="flexpart-input" placeholder="Flexpart run" class="p-2 cursor-pointer hover:bg-gray-50" *ngIf="runs$ | async as runs">
+    <mat-option *ngIf="runs.length === 0" disabled>
+      <span>No Flexpart run available - Run model first</span>
+    </mat-option>
     <mat-option *ngFor="let run of runs" [value]="run.uuid" (click)="onClick(run.uuid)">
       <span>
         {{ run.uuid }} - {{ run.date_created }}
