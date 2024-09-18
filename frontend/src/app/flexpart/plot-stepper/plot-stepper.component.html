@@ -3,7 +3,7 @@
 </select> -->
 
 <mat-horizontal-stepper (selectionChange)="selectionChanged($event)" [linear]="true">
-  <mat-step label="Choose Flexpart Run">
+  <mat-step label="Choose Flexpart run">
     <app-flexpart-plot #run></app-flexpart-plot>
     <div>
       <button mat-raised-button matStepperNext [disabled]="run.value == undefined">Next</button>
