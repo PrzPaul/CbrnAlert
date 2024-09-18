@@ -5,6 +5,42 @@ import { FormService } from 'src/app/core/services/form.service';
 import { DropdownQuestion } from 'src/app/shared/form/dropdown-question';
 import { QuestionBase } from 'src/app/shared/form/question-base';
 
+const substanceNames = [{
+  key: 24,
+  value: 'Generic Air Tracer'
+},
+{
+  key: 16,
+  value: 'Caesium-137'
+},
+{
+  key: 21,
+  value: 'Xenon-133'
+},
+{
+  key: 20,
+  value: 'Strontium-90'
+},
+{
+  key: 52,
+  value: 'Sarin'
+},
+{
+  key: 53,
+  value: 'VX'
+},
+{
+  key: 54,
+  value: 'Benzene'
+}]
+
+const geometryNames = [{
+  value: 'Point'
+},
+{
+  value: 'Box'
+}]
+
 @Component({
   selector: 'app-release-form',
   templateUrl: './release-form.component.html',
@@ -22,34 +58,42 @@ import { QuestionBase } from 'src/app/shared/form/question-base';
     }
 ]
 })
+
 export class ReleaseFormComponent implements ControlValueAccessor, OnDestroy {
   @Input() dateRange: {min: Date, max: Date} = {min: new Date(1950), max: new Date(2200)};
+
+  substanceNames = substanceNames;
+  geometryNames = geometryNames;
 
   form = new UntypedFormGroup({
     location: new UntypedFormControl({lon: 0, lat: 0}, Validators.required),
     height: new UntypedFormControl(1.5, Validators.required),
+    substanceName: new UntypedFormControl(substanceNames[0].key, Validators.required),
+    geometryName: new UntypedFormControl(geometryNames[0].value, Validators.required),
     mass: new UntypedFormControl(1., Validators.required),
     start: new UntypedFormControl(new Date(), Validators.required),
     end: new UntypedFormControl(new Date(), Validators.required)
   })
 
-  touched = false;
-
-  disabled = false;
-
-  onChange = (value: any) => { };
-
-  onTouched = () => { };
-
-  onChangeSubs: Subscription[] = [];
-
-  constructor(
-  ) {
-
+  createFormGroup(loc: {lon: number, lat: number}, start: Date, end: Date): UntypedFormGroup {
+    return new UntypedFormGroup({
+      location: new UntypedFormControl(loc, Validators.required),
+      height: new UntypedFormControl(1.5, Validators.required),
+      substanceName: new UntypedFormControl(substanceNames[0].key, Validators.required),
+      geometryName: new UntypedFormControl(geometryNames[0].value, Validators.required),
+      mass: new UntypedFormControl(1., Validators.required),
+      start: new UntypedFormControl(start, Validators.required),
+      end: new UntypedFormControl(end, Validators.required)
+    });
   }
 
-  // ngOnInit(): void {
-  // }
+  touched = false;
+  disabled = false;
+  onChange = (value: any) => { };
+  onTouched = () => { };
+  onChangeSubs: Subscription[] = [];
+
+
   validate(control: AbstractControl): ValidationErrors | null {
     if (this.form.valid) {
       return null;

@@ -3,7 +3,7 @@ These are the sources for the CbrnAlert application. This application first cons
 
 This repo also contains the sources for the Single Page Application developed with the Angular framework, which provides a GUI for calling the API.
 
-The API is defined using the [Open API](https://www.openapis.org/) specifications. The file with all the API definitions is availabe [here](https://github.com/tcarion/CbrnAlert/blob/master/api/api_docs.yaml). From these definitions, the API routes and data structures are generated in the Angular/Typescript world with [ng-openapi-gen](https://github.com/cyclosproject/ng-openapi-gen) and in the Julia/Genie world with [OpenAPI.jl](https://github.com/JuliaComputing/OpenAPI.jl) and [OpenAPI generator](https://openapi-generator.tech/).
+The API is defined using the [Open API](https://www.openapis.org/) specifications. The file with all the API definitions is availabe [here](https://github.com/PrzPaul/CbrnAlert/blob/master/api/api_docs.yaml). From these definitions, the API routes and data structures are generated in the Angular/Typescript world with [ng-openapi-gen](https://github.com/cyclosproject/ng-openapi-gen) and in the Julia/Genie world with [OpenAPI.jl](https://github.com/JuliaComputing/OpenAPI.jl) and [OpenAPI generator](https://openapi-generator.tech/).
 
 
 # Installation
@@ -80,7 +80,7 @@ sudo yum install eccodes
 ### Clone the repo
 
 ```bash
-git clone https://github.com/tcarion/CbrnAlert
+git clone https://github.com/PrzPaul/CbrnAlert
 ```
 
 ### Set up the frontend
@@ -210,7 +210,7 @@ cd CbrnAlert/frontend
 npm run generate:all
 ```
 
-This will read the [OpenAPI specifications file](https://github.com/tcarion/CbrnAlert/blob/master/api/api_docs.yaml) to generate all the files needed for both the frontend and the backend.
+This will read the [OpenAPI specifications file](https://github.com/PrzPaul/CbrnAlert/blob/master/api/api_docs.yaml) to generate all the files needed for both the frontend and the backend.
 
 Finally, run the frontend server that will listen to `localhost:4200`:
 

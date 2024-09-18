@@ -9,8 +9,11 @@ using SearchLight.Relationships
 
 using Flexpart
 using Dates
+using NCDatasets
+
 
 using CbrnAlertApp: STATUS_CREATED, STATUS_FINISHED, STATUS_ONGOING, STATUS_ERRORED
+using CbrnAlertApp: FLEXPART_RUNS_DIR
 using CbrnAlertApp: _area
 
 using CbrnAlertApp.Users
@@ -21,9 +24,6 @@ using CbrnAlertApp.FlexpartOutputs
 
 using CbrnAlertApp: API
 
-# const API = CbrnAlertApp.API
-
-# const FLEXPART_RUN_FAILED = Genie.Router.error(500, "Flexpart run failed", "application/json", error_info="Flexpart run failed")
 
 struct FlexpartRunException{T} <: Exception
   error::API.OpenAPI.APIModel
@@ -66,30 +66,39 @@ function run_simple()
   payload = Genie.Requests.jsonpayload()
   input_id = Genie.Router.params(:inputId)
 
-  # COMMAND options
-  sim_start = DateTime(payload["command"]["start"])
-  sim_end = DateTime(payload["command"]["end"])
-  time_step = payload["command"]["timeStep"]
-  output_type = payload["command"]["outputType"]
-
-  # RELEASE options
-  release_start = DateTime(payload["releases"][1]["start"])
-  release_end = DateTime(payload["releases"][1]["end"])
-  lon, lat = values(payload["releases"][1]["location"])
-  release_mass = payload["releases"][1]["mass"]
-  release_height = payload["releases"][1]["height"]
-
-  # OUTGRID options
-  gridres = payload["outgrid"]["gridres"]
-  area = payload["outgrid"]["area"]
-  heights = payload["outgrid"]["heights"]
-
   fprun = FlexpartRuns.create()
   fpsim = Flexpart.FlexpartSim(joinpath(fprun.path, "pathnames"))
   @info "FlexpartSim created at $(Flexpart.getpath(fpsim))"
 
   fpoptions = FlexpartOption(fpsim)
   Flexpart.remove_unused_species!(fpoptions)
+
+  # COMMAND options
+  sim_start = DateTime(payload["command"]["start"])
+  sim_end = DateTime(payload["command"]["end"])
+  time_step = payload["command"]["timeStep"]
+  output_type = payload["command"]["outputType"]
+  oh_fields_path = joinpath(Flexpart.getpath(fpsim), "options/")
+
+  # RELEASE options
+  release_nb_substances = length(payload["releases"])
+  release_name_substances = [payload["releases"][i]["substanceName"] for i in 1:release_nb_substances]
+  release_start = [DateTime(payload["releases"][i]["start"]) for i in 1:release_nb_substances]
+  release_end = [DateTime(payload["releases"][i]["end"]) for i in 1:release_nb_substances]
+  lon = []
+  lat = []
+  for i in (1:release_nb_substances)
+    longit, latit = values(payload["releases"][i]["location"])
+    push!(lon, longit)
+    push!(lat, latit)
+  end
+  release_mass = [payload["releases"][i]["mass"] for i in 1:release_nb_substances]
+  release_height = [payload["releases"][i]["height"] for i in 1:release_nb_substances]
+
+  # OUTGRID options
+  gridres = payload["outgrid"]["gridres"]
+  area = payload["outgrid"]["area"]
+  heights = payload["outgrid"]["heights"]
 
   # Set simulation start and end
   Flexpart.set_cmd_dates!(fpoptions, sim_start, sim_end)
@@ -101,23 +110,43 @@ function run_simple()
     :LOUTSAMPLE => convert(Int64, time_step / 4),
     :LSYNCTIME => convert(Int64, time_step / 4),
     # Set netcdf output
-    :IOUT => output_type + 8
+    :IOUT => output_type + 8,
+    # Set OH fields path
+    :OHFIELDS_PATH => "\"$oh_fields_path\""
   )
   merge!(fpoptions["COMMAND"][:COMMAND], cmd)
 
   # Set release options
-  Flexpart.set_point_release!(fpoptions, lon, lat)
-  releases_options = Dict(
-    :IDATE1 => Dates.format(release_start, "yyyymmdd"),
-    :ITIME1 => Dates.format(release_start, "HHMMSS"),
-    :IDATE2 => Dates.format(release_end, "yyyymmdd"),
-    :ITIME2 => Dates.format(release_end, "HHMMSS"),
-    :Z1 => release_height,
-    :Z2 => release_height,
-    :PARTS => Flexpart.MAX_PARTICLES,
-    :MASS => release_mass
-  )
-  Flexpart.merge!(fpoptions["RELEASES"][:RELEASE], releases_options)
+  #Flexpart.set_point_release!(fpoptions, lon, lat)
+  # releases_control_options = Dict(
+  #   :NSPEC => release_nb_substances,
+  #   :SPECNUM_REL => release_name_substances
+  # )
+  # Flexpart.merge!(fpoptions["RELEASES"][:RELEASES_CTRL], releases_control_options)
+  
+  for i in (1:release_nb_substances)
+    releases_control_options = Dict(
+      :NSPEC => release_nb_substances,
+      :SPECNUM_REL => release_name_substances[i]
+    )
+    Flexpart.merge!(fpoptions["RELEASES"][:RELEASES_CTRL], releases_control_options)
+    releases_options = Dict(
+      :IDATE1 => Dates.format(release_start[i], "yyyymmdd"),
+      :ITIME1 => Dates.format(release_start[i], "HHMMSS"),
+      :IDATE2 => Dates.format(release_end[i], "yyyymmdd"),
+      :ITIME2 => Dates.format(release_end[i], "HHMMSS"),
+      :LON1 => lon[i],
+      :LON2 => lon[i],
+      :LAT1 => lat[i],
+      :LAT2 => lat[i],
+      :Z1 => release_height[i],
+      :Z2 => release_height[i],
+      :PARTS => Flexpart.MAX_PARTICLES,
+      :MASS => release_mass[i],
+      :COMMENT => "\"RELEASE $i\""
+    )
+    Flexpart.merge!(fpoptions["RELEASES"][:RELEASE], releases_options)
+  end
 
   # Set outgrid options
   area_f = _area(area)
@@ -137,7 +166,6 @@ function run_simple()
   # Save the available file and the flexpart paths
   Flexpart.save(avs)
   Flexpart.save(fpsim)
-
 
   return run(fpsim, fprun) |> API.FlexpartRun |> json
 end
@@ -161,6 +189,9 @@ function run(fpsim::FlexpartSim, fprun::FlexpartRun)
   end
 
   if _iscompleted(fpsim)
+    output_dir = joinpath(fprun.path, "output")
+    nc_file = joinpath(output_dir, filter(x -> endswith(x, ".nc"), readdir(output_dir))[1])
+    add_total_depo(nc_file)
     FlexpartRuns.change_status!(fprun.name, STATUS_FINISHED)
   else
     @info "Flexpart run with name $(fprun.name) has failed"
@@ -187,10 +218,46 @@ function run(fpsim::FlexpartSim, fprun::FlexpartRun)
   return fprun
 end
 
+function add_total_depo(fp_output)
+  ds = Dataset(fp_output, "a")
+  if haskey(ds,"WD_spec001") && haskey(ds, "DD_spec001")  && !haskey(ds,"TD_spec001")
+    wet_depo = ds["WD_spec001"]
+    dry_depo = ds["DD_spec001"]
+    total_depo = wet_depo[:] + dry_depo[:]
+    defVar(ds, "TD_spec001", total_depo, dimnames(wet_depo), attrib=["units" => wet_depo.attrib["units"]])
+  else
+    nothing
+  end
+  close(ds)
+end
+
 function get_runs()
-  fpruns = user_related(FlexpartRun)
-  # filter!(FlexpartRuns.isfinished, fpruns)
-  filter!(x -> x.status == STATUS_FINISHED, fpruns)
+  FlexpartRuns.delete_non_existing!()
+  FlexpartRuns.delete_errored!()
+  # List for all Flexpart runs across accounts:
+  all_fpruns = all(FlexpartRun)
+  filter!(FlexpartRuns.isfinished, all_fpruns)
+  all_fpruns_names = [run.name for run in all_fpruns]
+  # List of Flexpart runs available on backend
+  valid_runs = []
+  for run in readdir(FLEXPART_RUNS_DIR)
+    if !isempty(filter(x -> endswith(x, ".nc"), readdir(joinpath(FLEXPART_RUNS_DIR, run, "output"))))
+      push!(valid_runs, run)
+    end
+  end
+  if !isempty(filter(FlexpartRuns.isongoing, user_related(FlexpartRun)))   # allows user to plot on app, while Flexpart is running a simulation
+    nothing
+  else sort(valid_runs) != sort(all_fpruns_names)
+    for new_fpdir in setdiff(valid_runs, all_fpruns_names)
+      newrun = FlexpartRuns.add_existing(joinpath(FLEXPART_RUNS_DIR, new_fpdir))
+      output_dir = joinpath(FLEXPART_RUNS_DIR, new_fpdir, "output")
+      nc_file = joinpath(output_dir, filter(x -> endswith(x, ".nc"), readdir(output_dir))[1])
+      add_total_depo(nc_file)
+      FlexpartRuns.assign_to_user!(current_user(), newrun)
+      FlexpartOutputs.add!(newrun)
+    end
+    fpruns = user_related(FlexpartRun)
+  end
   API.FlexpartRun.(fpruns) |> json
 end
 
