@@ -1,5 +1,8 @@
 <div class="flex items-center space-x-10">
   <mat-select panelClass="meteo-input" placeholder="Meteo data" class="p-2 cursor-pointer hover:bg-gray-50" *ngIf="inputs$ | async as inputs">
+    <mat-option *ngIf="inputs.length === 0" disabled>
+      <span>No meteo data available - Retrieve data first</span>
+    </mat-option>
     <mat-option *ngFor="let input of inputs; let index = index" [value]="input.uuid" (click)="onClick(input)">
       <span>
         {{ input.name }} - {{ input.date_created }}
