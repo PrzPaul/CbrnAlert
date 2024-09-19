@@ -80,8 +80,10 @@ export class VariableSelectionComponent implements OnInit {
     }
 
     onClick(e: string) {
+    console.log(`clicked ${e}`);
       this.selectedIdEvent.emit(e);
       this.value = e;
+      //console.log("clicking !" +e)
         // this.selectedVarSub.next((this.store.selectSnapshot(state => state.flexpart.fpOutput.variables2d[i])));
     }
 
