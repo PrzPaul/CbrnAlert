@@ -45,6 +45,7 @@
     "georaster": "^1.5.6",
     "georaster-layer-for-leaflet": "^3.10.0",
     "immer": "^9.0.6",
+    "ip": "^2.0.1",
     "leaflet": "^1.8.0",
     "leaflet-draw": "^1.0.4",
     "leaflet.heat": "^0.2.0",

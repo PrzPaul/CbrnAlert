@@ -140,16 +140,16 @@ end
 
 function get_inputs()
     FlexpartInputs.delete_non_existing!()
-    fpinputs = user_related(FlexpartInput)
+    fpinputs = all(FlexpartInput)
     filter!(FlexpartInputs.isfinished, fpinputs)
     fpinputs_names = [input.name for input in fpinputs]
-    if sort(readdir(EXTRACTED_WEATHER_DATA_DIR)) != sort(fpinputs_names)
-        for new_fedir in setdiff(readdir(EXTRACTED_WEATHER_DATA_DIR), fpinputs_names)
-            newinput = FlexpartInputs.add_existing(joinpath(EXTRACTED_WEATHER_DATA_DIR, new_fedir))
-            FlexpartInputs.assign_to_user!(current_user(), newinput)
-        end
-    end
-    fpinputs = user_related(FlexpartInput)
+    # if sort(readdir(EXTRACTED_WEATHER_DATA_DIR)) != sort(fpinputs_names)
+    #     for new_fedir in setdiff(readdir(EXTRACTED_WEATHER_DATA_DIR), fpinputs_names)
+    #         newinput = FlexpartInputs.add_existing(joinpath(EXTRACTED_WEATHER_DATA_DIR, new_fedir))
+    #         FlexpartInputs.assign_to_user!(current_user(), newinput)
+    #     end
+    # end
+    fpinputs = all(FlexpartInput)
     response = Dict.(fpinputs)
     return response |> json
 end
